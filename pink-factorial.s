@@ -2,6 +2,8 @@
 
 .global main
 
+number = 10
+
 ################################################################################
 
 .text
@@ -17,15 +19,26 @@ main:
     bl      do_escape
     ldr     r0, =hoffset
     bl      do_escape
+    ldr     r0, =pink
+    bl      do_escape
+    ldr     r0, =bold
+    bl      do_escape
 
-    mov     r0, #8
-    mov     r1, r0
-    bl      factorial
-    #mov     r2, r0
-    #ldr     r0, =format
-    #bl      printf
+    mov     r0, #number
     bl      print_int
+
+    ldr     r0, =fact_sign
+    bl      printf
+
+    mov     r0, #number
+    bl      factorial
+    bl      print_int
+
     bl      getchar
+
+    ldr     r0, =reset
+    bl      printf
+
     pop     {pc}
 
 ################################################################################
@@ -79,7 +92,7 @@ print_int:
 #
 # Printing unsigned integer with space as thousands separator.
 
-    push    {r0, r1, r2, r3, r4, r5, r6, lr}
+    push    {r0-r7, lr}
     movw    r1, #0x999A
     movt    r1, #0x1999
     mov     r6, #0xA
@@ -121,7 +134,7 @@ print_int:
     ldr     r0, =num_buf
     bl      printf
 
-    pop     {r0, r1, r2, r3, r4, r5, r6, pc}
+    pop     {r0-r7, pc}
 
 ################################################################################
 
@@ -129,7 +142,7 @@ print_int:
 
 ################################################################################
 
-format:     .ascii "%d! = %d"
+fact_sign:  .ascii "! = \000"
 
 escape:     .ascii "\033["
 
@@ -141,9 +154,13 @@ clear:      .ascii "2J\000"
 
 voffset:    .ascii "12d\000"
 
-hoffset:    .ascii "40G\000"
+hoffset:    .ascii "32G\000"
 
 pink:       .ascii "31m\000"
+
+bold:       .ascii "1m\000"
+
+reset:      .ascii "\033c\000"
 
 ################################################################################
 
