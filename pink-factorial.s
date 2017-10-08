@@ -11,12 +11,12 @@
 main:
     push    {lr}
 
-    #ldr     r0, =clear
-    #bl      do_escape
-    #ldr     r0, =voffset
-    #bl      do_escape
-    #ldr     r0, =hoffset
-    #bl      do_escape
+    ldr     r0, =clear
+    bl      do_escape
+    ldr     r0, =voffset
+    bl      do_escape
+    ldr     r0, =hoffset
+    bl      do_escape
 
     mov     r0, #8
     mov     r1, r0
@@ -83,16 +83,25 @@ print_int:
     movw    r1, #0x999A
     movt    r1, #0x1999
     mov     r6, #0xA
+    mov     r7, #3
     eor     r2, r2
 
 1:
-#    udiv    r3, r0, r1
     umull   r3, r4, r0, r1
     mls     r5, r4, r6, r0
 
     push    {r5}
     add     r2, #1
 
+    subs    r7, #1
+    bne     2f
+
+    mov     r5, #-0x10
+    push    {r5}
+    add     r2, #1
+    mov     r7, #3
+
+2:
     movs    r0, r4
     bne     1b
 
