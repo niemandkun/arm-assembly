@@ -1,8 +1,16 @@
 #!/bin/bash
 
-GCC=arm-linux-gnueabihf-gcc
-AS=arm-linux-gnueabihf-as
-LD=arm-linux-gnueabihf-ld
+if [[ ! $GCC ]]; then
+    GCC=arm-linux-gnueabihf-gcc
+fi
+
+if [[ ! $AS ]]; then
+    AS=arm-linux-gnueabihf-as
+fi
+
+if [[ ! $LD ]]; then
+    LD=arm-linux-gnueabihf-ld
+fi
 
 if [[ $# -ne 1 && $# -ne 2 ]]; then
     echo 'Usage: make [-h] [BUILDER] TARGET'
