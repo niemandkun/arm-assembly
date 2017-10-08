@@ -46,7 +46,7 @@ main:
 factorial:
 
 # args:
-#   r0      some sumber a
+#   r0      some number a
 #
 # returns:
 #   r0      factorial(a)
