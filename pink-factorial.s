@@ -46,7 +46,6 @@ NOECHO                                                        = ~(ECHO | ICANON)
         bl      do_esc
 .endm
 
-
 .macro sett t_ptr
         mov     r0, #STDIN_FILENO
         mov     r1, #TCSANOW
@@ -157,7 +156,7 @@ echoff: ldr     r0, [tnew_p, $C_LFLAG]
 
 ################################################################################
 
-# args:         r0  some sumber a
+# args:         r0  some number a
 # returns:      r0  factorial(a)
 
 # Calculates a factorial of the given number.
