@@ -1,53 +1,168 @@
 ################################################################################
+#                                                                              #
+#                              PINK FACTORIAL                                  #
+#                                                                              #
+#                      Prints pink factorial of a number.                      #
+#                                                                              #
+################################################################################
 
-.global main
-
-number = 10
+                                .global main
 
 ################################################################################
+#                                                                              #
+#                                 CONSTANTS                                    #
+#                                                                              #
+################################################################################
+
+C_LFLAG                                                                     = 12
+
+ECHO                                                                         = 8
+
+ICANON                                                                       = 2
+
+TCSANOW                                                                      = 0
+
+STDIN_FILENO                                                                 = 0
+
+SIZEOF_TERMIOS                                                              = 60
+
+RSIZE                                                                        = 4
+
+BAD_LUCK                                                                    = -1
+
+SATAN_NUMBER                                                                = 13
+
+NOECHO                                                        = ~(ECHO | ICANON)
+
+################################################################################
+#                                                                              #
+#                                   MACROS                                     #
+#                                                                              #
+################################################################################
+
 
 .macro esc command
         ldr     r0, =\command
-        bl      do_escape
+        bl      do_esc
 .endm
 
+
+.macro sett t_ptr
+        mov     r0, #STDIN_FILENO
+        mov     r1, #TCSANOW
+        mov     r2, \t_ptr
+        bl      tcsetattr
+.endm
+
+
+.macro gett t_ptr
+        mov     r0, #STDIN_FILENO
+        mov     r1, \t_ptr
+        bl      tcgetattr
+.endm
+
+
+################################################################################
+#                                                                              #
+                                    .text
+#                                                                              #
 ################################################################################
 
-.text
-
-################################################################################
-
-main:   push    {lr}
+main:   number  .req r8
+        push    {lr}
+        bl      geti
+        cmp     r0, #BAD_LUCK
+        popeq   {pc}
+        bl      getch
         esc     clear
         esc     voffset
         esc     hoffset
         esc     pink
         esc     bold
-        mov     r0, #number
-        bl      print_int
+        mov     r0, number
+        bl      prnt
         ldr     r0, =fact_sign
         bl      printf
-        mov     r0, #number
-        bl      factorial
-        bl      print_int
-        bl      getchar
+        mov     r0, number
+        bl      fact
+        bl      prnt
+        esc     vstart
+        esc     hstart
+        bl      getch
         ldr     r0, =reset
         bl      printf
         pop     {pc}
 
 ################################################################################
 
-factorial:
+# Get positive integer in r0. Returns -1 if error.
 
-# args:
-#   r0      some sumber a
-#
-# returns:
-#   r0      factorial(a)
-#
+geti:   push    {lr}
+        ldr     r0, =scanf_fmt
+        ldr     r1, =scan
+        bl      scanf
+        tst     r0, r0
+        moveq   r0, #BAD_LUCK
+        popeq   {pc}
+        ldr     r0, =scan
+        ldr     number, [r0]
+        cmp     number, #SATAN_NUMBER
+        movge   r0, #BAD_LUCK
+        popge   {pc}
+        tst     number, number
+        movlt   r0, #BAD_LUCK
+        pop     {pc}
+
+################################################################################
+
+# Get console output silently
+
+getch:  told_p  .req r4
+        tnew_p  .req r5
+        push    {lr}
+        ldr     told_p, =told
+        ldr     tnew_p, =tnew
+        gett    told_p
+        bl      copy_t
+        bl      echoff
+        sett    tnew_p
+        bl      getchar
+        sett    told_p
+        bl      tcsetattr
+        pop     {pc}
+
+################################################################################
+
+# Copy bytes from told to tnew
+
+copy_t: offset  .req r0
+        buf     .req r1
+        eor     offset, offset
+1:      ldr     buf, [told_p, offset]
+        str     buf, [tnew_p, offset]
+        add     offset, #RSIZE
+        cmp     offset, #SIZEOF_TERMIOS
+        bne     1b
+        mov     pc, lr
+
+################################################################################
+
+# Writes flag required to disable console output
+
+echoff: ldr     r0, [tnew_p, $C_LFLAG]
+        mov     r1, #NOECHO
+        and     r0, r0, r1
+        str     r0, [tnew_p, $C_LFLAG]
+        mov     pc, lr
+
+################################################################################
+
+# args:         r0  some sumber a
+# returns:      r0  factorial(a)
+
 # Calculates a factorial of the given number.
 
-        push    {r1, lr}
+fact:   push    {r1, lr}
         mov     r1, r0
         mov     r0, #1
 1:      tst     r1, r1
@@ -58,14 +173,11 @@ factorial:
 
 ################################################################################
 
-do_escape:
+# args:         r0  address of escape sequence
 
-# args:
-#   r0      address of escape sequence
-#
-# Printing escape-sequence.
+# Prints escape-sequence.
 
-        push    {r0, r1, lr}
+do_esc: push    {r0, r1, lr}
         ldr     r1, [r0]
         ldr     r0, =cmd_buf
         str     r1, [r0]
@@ -75,14 +187,11 @@ do_escape:
 
 ################################################################################
 
-print_int:
+# args:         r0 integer to print
 
-# args:
-#   r0  - integer to print
-#
 # Printing unsigned integer with space as thousands separator.
 
-        push    {r0-r7, lr}
+prnt:   push    {r0-r7, lr}
         movw    r1, #0x999A
         movt    r1, #0x1999
         mov     r6, #0xA
@@ -113,33 +222,45 @@ print_int:
         pop     {r0-r7, pc}
 
 ################################################################################
-
-.data
-
+#                                                                              #
+                                    .data
+#                                                                              #
 ################################################################################
 
-fact_sign:  .asciz "! = "
+told:           .space SIZEOF_TERMIOS
 
-escape_seq: .ascii "\033["
+tnew:           .space SIZEOF_TERMIOS
 
-cmd_buf:    .space 4
+scan:           .space RSIZE
 
-num_buf:    .space 128
+fact_sign:      .asciz "! = "
 
-clear:      .asciz "2J"
+scanf_fmt:      .asciz "%i"
 
-voffset:    .asciz "12d"
+escape_seq:     .ascii "\033["
 
-hoffset:    .asciz "32G"
+cmd_buf:        .space 4
 
-pink:       .asciz "31m"
+num_buf:        .space 128
 
-bold:       .asciz "1m"
+clear:          .asciz "2J"
 
-reset:      .asciz "\033c"
+voffset:        .asciz "12d"
+
+hoffset:        .asciz "36G"
+
+vstart:         .asciz "0d"
+
+hstart:         .asciz "0G"
+
+pink:           .asciz "31m"
+
+bold:           .asciz "1m"
+
+reset:          .asciz "\033c"
 
 ################################################################################
-
-# EOF
-
+#                                                                              #
+#                                    EOF                                       #
+#                                                                              #
 ################################################################################
