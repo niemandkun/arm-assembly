@@ -1,7 +1,8 @@
 #!/bin/bash
 
 if [[ ! $GCC ]]; then
-    GCC=arm-linux-gnueabihf-gcc
+    GCCFLAGS="-O0"
+    GCC=arm-linux-gnueabihf-gcc\ $GCCFLAGS
 fi
 
 if [[ ! $AS ]]; then
