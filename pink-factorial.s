@@ -53,7 +53,6 @@ NOECHO                                                        = ~(ECHO | ICANON)
         bl      tcsetattr
 .endm
 
-
 .macro gett t_ptr
         mov     r0, #STDIN_FILENO
         mov     r1, \t_ptr
@@ -114,7 +113,7 @@ geti:   push    {lr}
 
 ################################################################################
 
-# Get console output silently
+# Get console input silently
 
 getch:  told_p  .req r4
         tnew_p  .req r5
