@@ -59,7 +59,13 @@ printfound:
         ldr     r1, =printbuf
         bl      prntxbuf
         add     r1, r0
+        ldr     r0, =colon
+        bl      strcpy
+        add     r1, r0
         ldr     r0, =linebuf
+        bl      strcpy
+        add     r1, r0
+        ldr     r0, =newline
         bl      strcpy
         ldr     r0, =printbuf
         bl      prntz
@@ -216,6 +222,7 @@ strlen:
 strcpy:
         # r0 - ptr to source, zero-terminated
         # r1 - ptr to destination
+        # returns: number of characters being copied
         push    {r2,r3}
         eor     r2, r2
 1:
@@ -226,12 +233,17 @@ strcpy:
         add     r2, #1
         b       1b
 2:
+        mov     r0, r2
         pop     {r2,r3}
         mov     pc, lr
 
 ###############################################################################
 
 .data
+
+colon:      .asciz ": "
+
+newline:    .asciz "\n"
 
 ###############################################################################
 
