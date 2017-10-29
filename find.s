@@ -13,13 +13,13 @@ _start:
         ldr     r0, [sp, #8]
         bl      readfile
 
-        ldr     r0, =buffer
+        ldr     r0, =filebuf
         bl      strlen
 
         bl      prntd
 
         mov     r2, r0
-        ldr     r1, =buffer
+        ldr     r1, =filebuf
         mov     r0, #1
         mov     r7, #4
         svc     #0
@@ -38,8 +38,8 @@ readfile:
         svc     #0
         tst     r0, r0
         ble     1f
-        ldr     r1, =buffer
-        ldr     r2, =bufflen
+        ldr     r1, =filebuf
+        ldr     r2, =buflen
         mov     r7, #3
         svc     #0
 1:
@@ -128,22 +128,9 @@ strlen:
         sub     r0, r0, r1
         pop     {r1,pc}
 
-.data
-
-first:  .asciz  "hello"
-
-second: .asciz  "test1234test"
-
-third:  .asciz  "1234test"
-
-fourth: .asciz  "test1234"
-
-seq:    .asciz  "1234"
-
-nl:     .ascii  "\n"
-nl_len = 1
-
 .bss
 
-bufflen = 1000000
-buffer: .space bufflen
+buflen = 1000000
+filebuf: .space buflen
+linebuf: .space buflen
+printbuf: .space buflen
