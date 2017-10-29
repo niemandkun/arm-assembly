@@ -79,6 +79,21 @@ prntx:  push    {r1,lr}
 ###############################################################################
 
 # args:         r0 integer to print
+#               r1 buffer address
+
+# Print unsigned integer in hex into buffer.
+
+prntxbuf:
+        push    {r1-r3,lr}
+        mov     r3, #8
+        mov     r2, r1
+        mov     r1, #0x10
+        bl      prntbuf
+        pop     {r1-r3,pc}
+
+###############################################################################
+
+# args:         r0 integer to print
 
 # Print unsigned integer as decimal.
 
@@ -129,7 +144,60 @@ prnt:   number  .req r0
 3:
         pop     {r0-r3, r7, pc}
 
-#num_buf: .space 16
+###############################################################################
+
+# args:         r0 integer to print
+#               r1 radix
+#               r2 buffer
+#               r3 width (for leading zeros)
+
+# Convert unsigned integer in a given radix and write result into buffer.
+
+prntbuf:
+        push    {r1-r7, lr}
+
+        mov     r4, r2
+        mov     r6, r3
+        eor     r5, r5
+
+        tst     r1, r1
+        ble     3f
+
+        eor     digitc, digitc
+1:
+        udiv    temp, number, radix
+        mls     digit, temp, radix, number
+        cmp     digit, #10
+        addlt   digit, #0x30
+        addge   digit, #0x57
+        strb    digit, [sp, #-1]!
+        add     digitc, #1
+        movs    number, temp
+        bne     1b
+
+        mov     r5, digitc
+        mov     temp, r6
+        sub     r6, r6, r5
+        cmp     r5, temp
+        movlt   r5, temp
+        mov     temp, #0x30
+4:
+        tst     r6, r6
+        ble     2f
+        strb    temp, [r4], #1
+        sub     r6, #1
+        b       4b
+
+2:
+        tst     digitc, digitc
+        beq     3f
+        ldrb    digit, [sp], #1
+        strb    digit, [r4], #1
+        sub     digitc, #1
+        b       2b
+3:
+        mov     r0, r5
+        pop     {r1-r7, pc}
 
 ###############################################################################
 

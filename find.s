@@ -41,13 +41,29 @@ _start:
         tst     r0, r0
         blt     1b
 
-        mov     r0, r2
-        bl      prntz
+        bl      printfound
+        b       1b
 
 exit:
         eor     r0, r0
         mov     r7, #1
         svc     #0
+
+###############################################################################
+
+printfound:
+        # r2 - pointer to string
+        push    {r0-r2,lr}
+        ldr     r0, =lineaddr
+        ldr     r0, [r0]
+        ldr     r1, =printbuf
+        bl      prntxbuf
+        add     r1, r0
+        ldr     r0, =linebuf
+        bl      strcpy
+        ldr     r0, =printbuf
+        bl      prntz
+        pop     {r0-r2,pc}
 
 ###############################################################################
 
@@ -82,9 +98,16 @@ readfile:
 ###############################################################################
 
 readline:
-        # reads a single line from position at r0
-        # into linebuf and updates r0
+        # reads a single line from position at r0 into linebuf
+        # and updates lineaddr
+        # returns ptr to a next line in filebuf
         push    {r1-r2, lr}
+        # update lineaddr:
+        ldr     r1, =filebuf
+        sub     r1, r0, r1
+        ldr     r2, =lineaddr
+        str     r1, [r2]
+        # read next line into linebuf:
         ldr     r1, =linebuf
 1:
         ldrb    r2, [r0], #1
@@ -190,11 +213,36 @@ strlen:
 
 ###############################################################################
 
+strcpy:
+        # r0 - ptr to source, zero-terminated
+        # r1 - ptr to destination
+        push    {r2,r3}
+        eor     r2, r2
+1:
+        ldrb    r3, [r0, r2]
+        strb    r3, [r1, r2]
+        tst     r3, r3
+        beq     2f
+        add     r2, #1
+        b       1b
+2:
+        pop     {r2,r3}
+        mov     pc, lr
+
+###############################################################################
+
+.data
+
+###############################################################################
+
 .bss
 
 ###############################################################################
 
+lineaddr:   .space 4
+
 buflen = 1000000
-filebuf: .space buflen
-linebuf: .space buflen
-printbuf: .space buflen
+
+filebuf:    .space buflen
+linebuf:    .space buflen
+printbuf:   .space buflen
