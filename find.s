@@ -2,36 +2,70 @@
 
 .include "libprint.s"
 
+###############################################################################
+
 .text
+
+###############################################################################
 
 _start:
 
         ldr     r0, [sp]
-        cmp     r0, #2
+        cmp     r0, #3
         bne     exit
 
         ldr     r0, [sp, #8]
+        ldr     r1, [sp, #12]
         bl      readfile
 
-        ldr     r0, =filebuf
-        bl      strlen
+        mov     r4, r0
+        ldr     r3, =filebuf
+        add     r4, r4, r3
 
-        bl      prntd
+        ldr     r2, =linebuf
 
-        mov     r2, r0
-        ldr     r1, =filebuf
-        mov     r0, #1
-        mov     r7, #4
-        svc     #0
+        # r1 = ptr to target sequence
+        # r2 = ptr to linebuf
+        # r3 = ptr to file start
+        # r4 = ptr to file end
+
+1:
+        cmp     r3, r4
+        beq     exit
+
+        mov     r0, r3
+        bl      readline
+        mov     r3, r0
+
+        bl      findstr
+        tst     r0, r0
+        blt     1b
+
+        mov     r0, r2
+        bl      prntz
 
 exit:
         eor     r0, r0
         mov     r7, #1
         svc     #0
 
-# args: r0 - ptr to file path
+###############################################################################
+
+prntz:
+        # args: r0 - ptr to zero-terminated string
+        push    {r0-r2,r7,lr}
+        mov     r1, r0
+        bl      strlen
+        mov     r2, r0
+        mov     r0, #1
+        mov     r7, #4
+        svc     #0
+        pop     {r0-r2,r7,pc}
+
+###############################################################################
 
 readfile:
+        # args: r0 - ptr to file path
         push    {r1, lr}
         eor     r1, r1
         mov     r7, #5
@@ -44,6 +78,26 @@ readfile:
         svc     #0
 1:
         pop     {r1, pc}
+
+###############################################################################
+
+readline:
+        # reads a single line from position at r0
+        # into linebuf and updates r0
+        push    {r1-r2, lr}
+        ldr     r1, =linebuf
+1:
+        ldrb    r2, [r0], #1
+        cmp     r2, #0xA
+        beq     2f
+        strb    r2, [r1], #1
+        b       1b
+2:
+        eor     r2, r2
+        strb    r2, [r1]
+        pop     {r1-r2, pc}
+
+###############################################################################
 
 findstr:
         # r1 - sequence ptr
@@ -87,6 +141,8 @@ findstr:
 2:
         pop     {r1-r4,pc}
 
+###############################################################################
+
 streq:
         # r1 - ptr to first string
         # r2 - ptr to second string
@@ -108,6 +164,8 @@ streq:
         pop     {r4,r5}
         mov     pc, lr
 
+###############################################################################
+
 strend:
         # r0 - ptr to zero-terminated string
         # returns address of terminal zero
@@ -120,6 +178,8 @@ strend:
         pop     {r1}
         mov     pc, lr
 
+###############################################################################
+
 strlen:
         # r0 - ptr to zero-terminated string
         push    {r1,lr}
@@ -128,7 +188,11 @@ strlen:
         sub     r0, r0, r1
         pop     {r1,pc}
 
+###############################################################################
+
 .bss
+
+###############################################################################
 
 buflen = 1000000
 filebuf: .space buflen
