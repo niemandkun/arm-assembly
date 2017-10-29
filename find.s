@@ -12,11 +12,14 @@ _start:
 
         ldr     r0, [sp]
         cmp     r0, #3
-        bne     exit
+        bne     usage_error
 
         ldr     r0, [sp, #8]
         ldr     r1, [sp, #12]
         bl      readfile
+
+        tst     r0, r0
+        ble     io_error
 
         mov     r4, r0
         ldr     r3, =filebuf
@@ -31,7 +34,7 @@ _start:
 
 1:
         cmp     r3, r4
-        beq     exit
+        beq     print_matches_count
 
         mov     r0, r3
         bl      readline
@@ -42,7 +45,61 @@ _start:
         blt     1b
 
         bl      printfound
+
+        ldr     r7, =matches
+        ldr     r0, [r7]
+        add     r0, #1
+        str     r0, [r7]
+
         b       1b
+
+print_matches_count:
+
+        ldr     r0, =matches_count
+        bl      prntz
+
+        ldr     r0, =colorred
+        bl      prntz
+
+        ldr     r0, =matches
+        ldr     r0, [r0]
+        bl      prntd
+
+        ldr     r0, =colorreset
+        bl      prntz
+
+        ldr     r0, =newline
+        bl      prntz
+
+        b       exit
+
+usage_error:
+
+        ldr     r0, =usage_err_msg
+        bl      prntz
+
+        ldr     r0, =usage
+        bl      prntz
+
+        ldr     r0, [sp, #4]
+        bl      prntz
+
+        ldr     r0, =args
+        bl      prntz
+
+        b       exit
+
+io_error:
+
+        mov     r1, r0
+        ldr     r0, =io_err_msg
+        bl      prntz
+        mvn     r0, r1
+        bl      prntd
+        ldr     r0, =newline
+        bl      prntz
+
+        b       exit
 
 exit:
         eor     r0, r0
@@ -52,24 +109,89 @@ exit:
 ###############################################################################
 
 printfound:
-        # r2 - pointer to string
-        push    {r0-r2,lr}
+        # r0 - address of start of the target sequence in source
+        # r1 - pointer to target sequence
+        push    {r0-r3,lr}
+
+        mov     r2, r0
+        mov     r3, r1
+
+        ldr     r1, =printbuf
+
+        ldr     r0, =colorgreen
+        bl      strcpy
+        add     r1, r0
+
         ldr     r0, =lineaddr
         ldr     r0, [r0]
-        ldr     r1, =printbuf
         bl      prntxbuf
         add     r1, r0
+
+        ldr     r0, =colorreset
+        bl      strcpy
+        add     r1, r0
+
         ldr     r0, =colon
         bl      strcpy
         add     r1, r0
+
         ldr     r0, =linebuf
-        bl      strcpy
+        bl      printentry
         add     r1, r0
+
         ldr     r0, =newline
         bl      strcpy
+
         ldr     r0, =printbuf
         bl      prntz
-        pop     {r0-r2,pc}
+
+        pop     {r0-r3,pc}
+
+###############################################################################
+
+printentry:
+        # r0 - source
+        # r1 - destination
+        # r2 - address of the start of the target sequence
+        # r3 - ptr to the target sequence
+        push    {r1-r5,lr}
+        mov     r5, r1
+1:
+        cmp     r0, r2
+        beq     2f
+        ldrb    r4, [r0], #1
+        strb    r4, [r1], #1
+        b       1b
+2:
+        mov     r4, r0
+        ldr     r0, =colorred
+        bl      strcpy
+        add     r1, r0
+        ldr     r0, =colorbold
+        bl      strcpy
+        add     r1, r0
+        mov     r0, r4
+3:
+        ldrb    r4, [r3], #1
+        tst     r4, r4
+        beq     4f
+        strb    r4, [r1], #1
+        add     r0, #1
+        b       3b
+4:
+        mov     r4, r0
+        ldr     r0, =colorreset
+        bl      strcpy
+        add     r1, r0
+        mov     r0, r4
+5:
+        ldrb    r4, [r0], #1
+        strb    r4, [r1], #1
+        tst     r4, r4
+        bne     5b
+        sub     r0, r1, r5
+        sub     r0, r0, #1
+        pop     {r1-r5,pc}
 
 ###############################################################################
 
@@ -241,6 +363,27 @@ strcpy:
 
 .data
 
+matches_count:
+            .asciz "Total matches: "
+
+io_err_msg:
+            .asciz "[Error] Cannot open file, error code: -"
+
+usage_err_msg:
+            .asciz "[Error] Unexpected number of arguments.\n"
+
+usage:      .asciz "Usage: "
+
+args:       .asciz " SOURCE_FILE TARGET_SEQUENCE\n"
+
+colorgreen: .asciz "\033[32m"
+
+colorred:   .asciz "\033[31m"
+
+colorbold:  .asciz "\033[1m"
+
+colorreset: .asciz "\033[0m"
+
 colon:      .asciz ": "
 
 newline:    .asciz "\n"
@@ -252,6 +395,8 @@ newline:    .asciz "\n"
 ###############################################################################
 
 lineaddr:   .space 4
+
+matches:    .space 4
 
 buflen = 1000000
 
