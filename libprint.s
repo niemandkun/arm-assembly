@@ -71,10 +71,10 @@ fact:   push    {r1, lr}
 
 # Print unsigned integer in hex.
 
-prntx:  push    {lr}
+prntx:  push    {r1,lr}
         mov     r1, #0x10
         bl      prnt
-        pop     {pc}
+        pop     {r1,pc}
 
 ###############################################################################
 
@@ -82,10 +82,10 @@ prntx:  push    {lr}
 
 # Print unsigned integer as decimal.
 
-prntd:  push    {lr}
+prntd:  push    {r1,lr}
         mov     r1, #10
         bl      prnt
-        pop     {pc}
+        pop     {r1,pc}
 
 ###############################################################################
 
