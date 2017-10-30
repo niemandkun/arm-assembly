@@ -26,6 +26,9 @@ _start:
         tst     r0, r0
         ble     io_error
 
+        ldr     r0, =reset
+        bl      prntz
+
         ldr     r1, [sp, #12]
         # r1 = ptr to target sequence
 
@@ -68,6 +71,7 @@ print_matches_count:
         bl      prntz
 
         ldr     r0, =newline
+        bl      prntz
         bl      prntz
 
         b       exit
@@ -464,7 +468,7 @@ strcpy:
 .data
 
 matches_count:
-            .asciz "Total matches: "
+            .asciz "\nTotal matches: "
 
 io_err_msg:
             .asciz "[Error] Cannot open file, error code: -"
@@ -487,6 +491,8 @@ colorreset: .asciz "\033[0m"
 colon:      .asciz ": "
 
 newline:    .asciz "\n"
+
+reset:      .asciz "\033[2J\033[0d\033[0G"
 
 ###############################################################################
 
