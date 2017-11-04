@@ -5,14 +5,21 @@
 .text
 
 _start:
-NITER           = 1
+UPDATE          = 0x0000ffff
 
         bl      do_mmap_rtc_mem
-        ldr     r12, =NITER
+        eor     r12, r12
+
+        ldr     r10, =UPDATE
+
 1:
-        bl      printtime
-        subs    r12, #1
-        bgt     1b
+        and     r1, r12, r10
+        add     r12, #1
+
+        tst     r1, r1
+        bleq    printtime
+
+        b       1b
 
         bl      do_close_rtc_mem
 
@@ -74,31 +81,39 @@ do_close_rtc_mem:
 
 printtime:
         # args: r0 - address of allocation start
-        push    {r0-r2,r7,r12,lr}
+        push    {r0-r2,r7,r8,lr}
 
-        mov     r12, r0
+        mov     r8, r0
 
-        ldr     r0, [r12, #16]
+        ldr     r0, [r8, #16]
         ldr     r1, =printbuf
         bl      prntxbuf
-        prnts   printbuf, printbuf_len
+        prnts   printstart, print_len
 
-        ldr     r0, [r12, #20]
+        ldr     r0, [r8, #20]
         ldr     r1, =printbuf
         bl      prntxbuf
-        prnts   printbuf, printbuf_len
+        prnts   printstart, print_len
 
-        pop     {r0-r2,r7,r12,pc}
+        pop     {r0-r2,r7,r8,pc}
+
+.data
+
+memfile:        .asciz "/dev/mem"
+
+printstart:
+                .ascii "\033[2J"    @ clear
+                .ascii "\033[12d"   @ voffset
+                .ascii "\033[36G"   @ offset
+                .ascii "\033[31m"   @ color
+                .ascii "\033[1m"    @ bold
+
+printbuf:       .space 8
+
+                .ascii "\n"
+
+print_len       = . - printstart
 
 .bss
 
 filedesc:       .space 4
-
-
-.data
-printbuf:       .space 8
-                .ascii "\n"
-
-printbuf_len    = . - printbuf
-
-memfile:        .asciz "/dev/mem"
