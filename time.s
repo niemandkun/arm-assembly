@@ -10,6 +10,7 @@ _start:
 UPDATE          = 0x000fffff
 
         bl      do_mmap_rtc_mem
+        mov     r11, r0
         eor     r12, r12
 
         ldr     r10, =UPDATE
@@ -19,17 +20,48 @@ UPDATE          = 0x000fffff
         add     r12, #1
 
         tst     r1, r1
-        bleq    printtime
+        bne     1b
 
-        b       1b
+        mov     r0, r11
+        bl      printtime
+
+        bl      poll_stdin
+        tst     r0, r0
+        beq     1b
 
         bl      do_close_rtc_mem
+        bl      do_read_all_stdin
+
+        ldr     r0, =reset
+        bl      prntz
+
+        b       exit
+
+exit_error:
+
+        ldr     r0, =error_msg
+        bl      prntz
 
 exit:
         eor     r0, r0
         mov     r7, #1
         svc     #0  @exit(0)
 
+
+do_read_all_stdin:
+        push    {lr}
+        ldr     r1, =printstart
+        ldr     r2, =printlen
+        mov     r7, #3
+1:
+        mov     r0, #STDIN
+        svc     #0  @read(STDIN, printstart, printlen)
+
+        bl      poll_stdin
+        tst     r0, r0
+        bne     1b
+
+        pop     {pc}
 
 do_mmap_rtc_mem:
         # args: none
@@ -47,7 +79,7 @@ OPEN_FLAGS      = O_RDWR | O_DSYNC
         svc     #0  @open(memfile)
 
         tst     r0, r0
-        blt     exit
+        blt     exit_error
 
         ldr     r1, =filedesc
         str     r0, [r1]
@@ -79,6 +111,19 @@ do_close_rtc_mem:
         mov     r7, #6
         svc     #0  @close(filedesc)
         pop     {r0,r7,pc}
+
+
+poll_stdin:
+        # returns: 1 if stdin is ready, 0 otherwise
+        push    {r1,r2,r7,lr}
+        ldr     r0, =pollfd
+        mov     r1, #1
+        eor     r2, r2
+        mov     r7, #168
+        svc     #0  @poll(pollfd, 1, 0)
+        ldr     r0, =pollfd
+        ldrh    r0, [r0, #6]
+        pop     {r1,r2,r7,pc}
 
 
 printtime:
@@ -121,9 +166,9 @@ print_time:
         ldr     r3, [r8, #20]
         rev     r3, r3
 
-BLINK           = 0x08000000
+BLINK_FLAG      = 0x10000000
 
-        ldr     r4, =BLINK
+        ldr     r4, =BLINK_FLAG
         and     r4, r4, r12
 
         ror     r3, r3, #8
@@ -181,7 +226,8 @@ memfile:        .asciz "/dev/mem"
 printstart:     .ascii "\033[2J"    @ clear
                 .ascii "\033[12d"   @ voffset
                 .ascii "\033[33G"   @ offset
-                .ascii "\033[31m"   @ color
+                .ascii "\033[40m"   @ bg color
+                .ascii "\033[32m"   @ fg color
                 .ascii "\033[1m"    @ bold
 
 printbuf:       .space 19
@@ -191,6 +237,18 @@ printbuf:       .space 19
                 .ascii "\033[0m"    @ reset color
 
 printlen        = . - printstart
+
+reset:          .asciz "\033c"
+
+POLLIN          = 0x01
+STDIN           = 0x02
+
+pollfd:
+                .word STDIN
+                .hword POLLIN
+                .hword 0
+
+error_msg:      .asciz "[Error] Cannot open /dev/mem, aborting.\n"
 
 .bss
 
