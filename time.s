@@ -2,10 +2,12 @@
 
 .include "libprint.s"
 
+.include "libstring.s"
+
 .text
 
 _start:
-UPDATE          = 0x0000ffff
+UPDATE          = 0x000fffff
 
         bl      do_mmap_rtc_mem
         eor     r12, r12
@@ -37,10 +39,10 @@ do_mmap_rtc_mem:
 O_RDWR          = 0x0002
 O_DSYNC         = 0x1000
 
-open_flags      = O_RDWR | O_DSYNC
+OPEN_FLAGS      = O_RDWR | O_DSYNC
 
         ldr     r0, =memfile
-        ldr     r1, =open_flags
+        ldr     r1, =OPEN_FLAGS
         mov     r7, #5
         svc     #0  @open(memfile)
 
@@ -54,18 +56,18 @@ PROT_READ       = 0x0001
 PROT_WRITE      = 0x0002
 MAP_SHARED      = 0x0001
 
-mmap_prot       = PROT_READ | PROT_WRITE
-mmap_flags      = MAP_SHARED
+MMAP_PROT       = PROT_READ | PROT_WRITE
+MMAP_FLAGS      = MAP_SHARED
 rtc_base        = 0x1f00
 
         mov     r4, r0
         eor     r0, r0
         mov     r1, #1
-        ldr     r2, =mmap_prot
-        ldr     r3, =mmap_flags
+        mov     r2, #MMAP_PROT
+        mov     r3, #MMAP_FLAGS
         ldr     r5, =rtc_base
         mov     r7, #192
-        svc     #0  @mmap2(0, 1, mmap_prot, mmap_flags, 0, rtc_base_addr)
+        svc     #0  @mmap2(0, 1, MMAP_PROT, MMAP_FLAGS, 0, rtc_base_addr)
 
         pop     {r1-r7,pc}
 
@@ -81,38 +83,114 @@ do_close_rtc_mem:
 
 printtime:
         # args: r0 - address of allocation start
-        push    {r0-r2,r7,r8,lr}
-
+        push    {r0-r4,r7,r8,lr}
         mov     r8, r0
 
-        ldr     r0, [r8, #16]
-        ldr     r1, =printbuf
-        bl      prntxbuf
-        prnts   printstart, print_len
+TIME_MASK       = 0xff
+YEAR_OFFSET     = 1970
 
-        ldr     r0, [r8, #20]
         ldr     r1, =printbuf
-        bl      prntxbuf
-        prnts   printstart, print_len
+        ldr     r2, =TIME_MASK
+        ldr     r4, =YEAR_OFFSET
 
-        pop     {r0-r2,r7,r8,pc}
+print_date:
+        ldr     r3, [r8, #16]
+
+        and     r0, r3, r2
+        bl      prntdbuf
+        add     r1, r0
+
+        bl      add_dot
+
+        ror     r3, r3, #8
+        and     r0, r3, r2
+        bl      prntdbuf
+        add     r1, r0
+
+        bl      add_dot
+
+        ror     r3, r3, #8
+        and     r0, r3, r2
+        add     r0, r0, r4
+        bl      prntdbuf
+        add     r1, r0
+
+        bl      add_space
+
+print_time:
+        ldr     r3, [r8, #20]
+        rev     r3, r3
+
+BLINK           = 0x08000000
+
+        ldr     r4, =BLINK
+        and     r4, r4, r12
+
+        ror     r3, r3, #8
+        and     r0, r3, r2
+        bl      prntdbuf
+        add     r1, r0
+
+        tst     r4, r4
+        bleq    add_colon
+        blne    add_space
+
+        ror     r3, r3, #8
+        and     r0, r3, r2
+        bl      prntdbuf
+        add     r1, r0
+
+        tst     r4, r4
+        bleq    add_colon
+        blne    add_space
+
+        ror     r3, r3, #8
+        and     r0, r3, r2
+        bl      prntdbuf
+        add     r1, r0
+
+STDOUT          = 1
+
+        mov     r0, #STDOUT
+        ldr     r1, =printstart
+        ldr     r2, =printlen
+        mov     r7, #4
+        svc     #0  @write(STDOUT, printstart, printlen)
+
+        pop     {r0-r4,r7,r8,pc}
+
+.macro insert_char char
+        mov     r0, \char @ dot
+        strb    r0, [r1], #1
+        mov     pc, lr
+.endm
+
+add_dot:
+        insert_char #0x2E
+
+add_space:
+        insert_char #0x20
+
+add_colon:
+        insert_char #0x3A
 
 .data
 
 memfile:        .asciz "/dev/mem"
 
-printstart:
-                .ascii "\033[2J"    @ clear
+printstart:     .ascii "\033[2J"    @ clear
                 .ascii "\033[12d"   @ voffset
-                .ascii "\033[36G"   @ offset
+                .ascii "\033[33G"   @ offset
                 .ascii "\033[31m"   @ color
                 .ascii "\033[1m"    @ bold
 
-printbuf:       .space 8
+printbuf:       .space 19
 
-                .ascii "\n"
+                .ascii "\033[0d"    @ voffset
+                .ascii "\033[0G"    @ offset
+                .ascii "\033[0m"    @ reset color
 
-print_len       = . - printstart
+printlen        = . - printstart
 
 .bss
 
