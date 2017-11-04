@@ -27,8 +27,8 @@ do_mmap_rtc_mem:
         # returns: address of allocation start
         push    {r1-r7,lr}
 
-O_RDWR          = 0x000002
-O_DSYNC         = 0x001000
+O_RDWR          = 0x0002
+O_DSYNC         = 0x1000
 
 open_flags      = O_RDWR | O_DSYNC
 
@@ -43,13 +43,13 @@ open_flags      = O_RDWR | O_DSYNC
         ldr     r1, =filedesc
         str     r0, [r1]
 
-PROT_READ       = 0x01
-PROT_WRITE      = 0x02
-MAP_SHARED      = 0x01
+PROT_READ       = 0x0001
+PROT_WRITE      = 0x0002
+MAP_SHARED      = 0x0001
 
 mmap_prot       = PROT_READ | PROT_WRITE
 mmap_flags      = MAP_SHARED
-rtc_base        = 0x00001f00
+rtc_base        = 0x1f00
 
         mov     r4, r0
         eor     r0, r0
@@ -68,7 +68,7 @@ do_close_rtc_mem:
         ldr     r0, =filedesc
         ldr     r0, [r0]
         mov     r7, #6
-        svc     #0  @close(r11)
+        svc     #0  @close(filedesc)
         pop     {r0,r7,pc}
 
 
