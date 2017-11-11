@@ -6,6 +6,15 @@
 #
 ##############################################################################
 
+.global parseint
+.global prntx
+.global prntxbuf
+.global prntd
+.global prntdbuf
+.global prnt
+.global prntbuf
+.global prnt1
+
 ##############################################################################
 
 # Print string using syscall.
@@ -49,23 +58,7 @@ parseint:
         mov     r0, #-1
         pop     {r1-r3, pc}
 
-##############################################################################
-
-# args:         r0  some number a
-# returns:      r0  factorial(a)
-
-# Calculates a factorial of the given number.
-
-fact:   push    {r1, lr}
-        mov     r1, r0
-        mov     r0, #1
-1:      tst     r1, r1
-        pople   {r1, pc}
-        mul     r0, r1, r0
-        sub     r1, #1
-        b       1b
-
-##############################################################################
+##########################V####################################################
 
 # args:         r0 integer to print
 
