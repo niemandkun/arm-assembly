@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [[ ! $GCC ]]; then
-    GCCFLAGS="-O0"
+    GCCFLAGS="-O3 -mcpu=cortex-a7 -mtune=arm10tdmi -mfpu=neon"
     GCC=arm-linux-gnueabihf-gcc\ $GCCFLAGS
 fi
 
@@ -38,7 +38,7 @@ if [[ $1 == "-h" ]]; then
 fi
 
 function make_gcc {
-    $GCC $1
+    $GCC $*
 }
 
 function make_asm {
@@ -50,7 +50,8 @@ function make_asm {
 }
 
 if [[ $1 == gcc ]]; then
-    make_gcc $2
+    shift
+    make_gcc $*
 fi
 
 if [[ $1 == as || $1 == asm ]]; then
