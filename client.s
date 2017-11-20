@@ -17,6 +17,10 @@
 main:
         push    {lr}
 
+        bl      do_parse_args
+        tst     r0, r0
+        bne     usage
+
         bl      do_open_memfile
 
         tst     r0, r0
@@ -56,6 +60,11 @@ error:
         bl      prntz
         b       exit
 
+usage:
+        ldr     r0, =usage_msg
+        bl      prntz
+        b       exit
+
 cleanup:
         bl      do_close_memfile
         bl      nocanon
@@ -65,16 +74,49 @@ exit:
 
 ##############################################################################
 
+do_parse_args:
+        # args: r0 = argc, r1 = argv
+        # returns: r0 is 0 if success, not zero otherwise
+
+        cmp     r0, #2
+        bne     1f
+
+        ldr     r0, [r1, #4]    @ r0 = argv[1]
+        ldrb    r0, [r0]        @ r0 = argv[1][0]
+
+        sub     r0, r0, #0x30
+        cmp     r0, #1
+        beq     2f
+        cmp     r0, #2
+        beq     2f
+1:
+        mvn     r0, #1
+        mov     pc, lr
+2:
+        ldr     r1, =uart_no
+        str     r0, [r1]
+        eor     r0, r0
+        mov     pc, lr
+
+##############################################################################
+
 do_setup_uart:
-        push    {r0-r3,lr}
+        push    {r0-r4,lr}
 
-# UART_BIT        = 17 @ UART1
-# UART_OFFSET     = 0x0400
+UART1_BIT        = 17
+UART1_OFFSET     = 0x0400
 
-UART_BIT        = 18 @ UART2
-UART_OFFSET     = 0x0800
+UART2_BIT        = 18
+UART2_OFFSET     = 0x0800
 
-        ldr     r1, =UART_BIT
+        ldr     r1, =uart_no
+        ldr     r1, [r1]
+        cmp     r1, #1
+        ldreq   r1, =UART1_BIT
+        ldreq   r4, =UART1_OFFSET
+        ldrne   r1, =UART2_BIT
+        ldrne   r4, =UART2_OFFSET
+
         mov     r0, #1
         lsl     r0, r0, r1
 
@@ -91,35 +133,42 @@ UART_OFFSET     = 0x0800
 
         ldr     r1, =uart_mem
         ldr     r1, [r1]
+        add     r1, r1, r4
 
 DLAB_SET        = 0b10000011
 
         ldr     r0, =DLAB_SET
-        ldrb    r2, [r1, #UART_OFFSET + 0x0C]
+        ldrb    r2, [r1, #0x0C]
         orr     r2, r2, r0
-        strb    r2, [r1, #UART_OFFSET + 0x0C]
+        strb    r2, [r1, #0x0C]
 
         mov     r0, #13
-        strb    r0, [r1, #UART_OFFSET + 0x00]
+        strb    r0, [r1, #0x00]
 
         eor     r0, r0, r0
-        strb    r0, [r1, #UART_OFFSET + 0x04]
+        strb    r0, [r1, #0x04]
 
 DLAB_UNSET      = 0b01111111
 
         ldr     r0, =DLAB_UNSET
-        ldrb    r2, [r1, #UART_OFFSET + 0x0C]
+        ldrb    r2, [r1, #0x0C]
         and     r2, r2, r0
-        strb    r2, [r1, #UART_OFFSET + 0x0C]
+        strb    r2, [r1, #0x0C]
 
-        pop     {r0-r3,pc}
+        pop     {r0-r4,pc}
 
 ##############################################################################
 
 do_job:
-        push    {r0-r3,r7,lr}
+        push    {r0-r3,r7,r12,lr}
 
 STDOUT          = 1
+
+        ldr     r12, =uart_no
+        ldr     r12, [r12]
+        cmp     r12, #1
+        ldreq   r12, =UART1_OFFSET
+        ldrne   r12, =UART2_OFFSET
 
 job_start:
 
@@ -127,14 +176,16 @@ check_icoming_message:
 
         ldr     r3, =uart_mem
         ldr     r3, [r3]
-        ldrb    r0, [r3, #UART_OFFSET + 0x14]
+        add     r3, r3, r12
+
+        ldrb    r0, [r3, #0x14]
         ands    r0, r0, #1
         beq     check_outcoming_message
 
 recv_incoming_message:
 
         ldr     r1, =printbuf
-        ldrb    r0, [r3, #UART_OFFSET + 0x00]
+        ldrb    r0, [r3, #0x00]
         strb    r0, [r1]
         mov     r0, #STDOUT
         mov     r2, #1
@@ -149,27 +200,30 @@ check_outcoming_message:
 
 send_outcoming_message:
 
+        push    {r12}
         bl      getchar
+        pop     {r12}
 
         cmp     r0, #0x03 @ ^C
         beq     job_finish
 
         ldr     r3, =uart_mem
         ldr     r3, [r3]
+        add     r3, r3, r12
 
 wait_port_empty:
 
-        ldrb    r1, [r3, #UART_OFFSET + 0x14]
+        ldrb    r1, [r3, #0x14]
         ands    r1, r1, #0b00100000
         # beq     wait_port_empty
 
-        strb    r0, [r3, #UART_OFFSET + 0x00]
+        strb    r0, [r3, #0x00]
 
         b       job_start
 
 job_finish:
 
-        pop     {r0-r3,r7,pc}
+        pop     {r0-r3,r7,r12,pc}
 
 ##############################################################################
 
@@ -237,6 +291,10 @@ memfile:        .asciz "/dev/mem"
 
 error_msg:      .asciz "[Error] Cannot open /dev/mem, aborting.\n"
 
+usage_msg:      .ascii "Usage: a.out UART\n\n"
+                .ascii "Parameters:\n"
+                .asciz "    UART - uart port to use (1 or 2)\n\n"
+
 ##############################################################################
 
 .bss
@@ -250,6 +308,8 @@ filedesc:       .space 4
 ccu_mem:        .space 4
 
 uart_mem:       .space 4
+
+uart_no:        .space 4
 
 ##############################################################################
 
