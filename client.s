@@ -46,6 +46,7 @@ UART_MEM        = 0x01C28
         bl      do_setup_uart
 
         bl      canon
+
         bl      do_job
 
         b       cleanup
@@ -56,8 +57,8 @@ error:
         b       exit
 
 cleanup:
-        bl      nocanon
         bl      do_close_memfile
+        bl      nocanon
 
 exit:
         pop     {pc}
@@ -118,40 +119,56 @@ DLAB_UNSET      = 0b01111111
 do_job:
         push    {r0-r3,r7,lr}
 
-1:
-        eor     r12, r12
-        ldr     r11, =0x00400000
+STDOUT          = 1
 
-3:
-        adds    r12, #1
-        cmp     r12, r11
-        bne     3b
+job_start:
 
-        bl      kbdhit
-        tst     r0, r0
-        beq     1b
-
-        bl      getchar
-
-        cmp     r0, #0x03
-        beq     4f
+check_icoming_message:
 
         ldr     r3, =uart_mem
         ldr     r3, [r3]
-2:
+        ldrb    r0, [r3, #UART_OFFSET + 0x14]
+        ands    r0, r0, #1
+        beq     check_outcoming_message
+
+recv_incoming_message:
+
+        ldr     r1, =printbuf
+        ldrb    r0, [r3, #UART_OFFSET + 0x00]
+        strb    r0, [r1]
+        mov     r0, #STDOUT
+        mov     r2, #1
+        mov     r7, #4
+        svc     #0  @write(STDOUT, printfuf, 1);
+
+check_outcoming_message:
+
+        bl      kbdhit
+        tst     r0, r0
+        beq     job_start
+
+send_outcoming_message:
+
+        bl      getchar
+
+        cmp     r0, #0x03 @ ^C
+        beq     job_finish
+
+        ldr     r3, =uart_mem
+        ldr     r3, [r3]
+
+wait_port_empty:
+
         ldrb    r1, [r3, #UART_OFFSET + 0x14]
         ands    r1, r1, #0b00100000
-
-        mov     r2, r0
-        mov     r0, r1
-        bl      prntx
-        mov     r0, r2
+        # beq     wait_port_empty
 
         strb    r0, [r3, #UART_OFFSET + 0x00]
 
-        b       1b
+        b       job_start
 
-4:
+job_finish:
+
         pop     {r0-r3,r7,pc}
 
 ##############################################################################
@@ -192,9 +209,6 @@ do_mmap_mem:
 
         mov     r5, r1
 
-        ldr     r1, =filedesc
-        ldr     r4, [r1]
-
 PROT_READ       = 0x0001
 PROT_WRITE      = 0x0002
 MAP_SHARED      = 0x0001
@@ -203,9 +217,11 @@ MMAP_PROT       = PROT_READ | PROT_WRITE
 MMAP_FLAGS      = MAP_SHARED
 
         eor     r0, r0
-        mov     r1, #0x1
+        mov     r1, #4096
         mov     r2, #MMAP_PROT
         mov     r3, #MMAP_FLAGS
+        ldr     r4, =filedesc
+        ldr     r4, [r4]
         mov     r7, #192
         svc     #0  @mmap2(0, 1, MMAP_PROT, MMAP_FLAGS, filedesc, base_addr)
 

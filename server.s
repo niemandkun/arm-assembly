@@ -45,6 +45,8 @@ UART_MEM        = 0x01C28
 
         bl      do_setup_uart
 
+        bl      canon
+
         bl      do_job
 
         b       cleanup
@@ -56,6 +58,7 @@ error:
 
 cleanup:
         bl      do_close_memfile
+        bl      nocanon
 
 exit:
         pop     {pc}
@@ -118,22 +121,53 @@ do_job:
 
 STDOUT          = 1
 
-        ldr     r1, =printbuf
-        mov     r2, #1
+job_start:
+
+check_icoming_message:
+
         ldr     r3, =uart_mem
         ldr     r3, [r3]
-        mov     r7, #4
-1:
         ldrb    r0, [r3, #UART_OFFSET + 0x14]
         ands    r0, r0, #1
-        beq     1b
+        beq     check_outcoming_message
 
+recv_incoming_message:
+
+        ldr     r1, =printbuf
         ldrb    r0, [r3, #UART_OFFSET + 0x00]
         strb    r0, [r1]
         mov     r0, #STDOUT
+        mov     r2, #1
+        mov     r7, #4
         svc     #0  @write(STDOUT, printfuf, 1);
 
-        b       1b
+check_outcoming_message:
+
+        bl      kbdhit
+        tst     r0, r0
+        beq     job_start
+
+send_outcoming_message:
+
+        bl      getchar
+
+        cmp     r0, #0x03 @ ^C
+        beq     job_finish
+
+        ldr     r3, =uart_mem
+        ldr     r3, [r3]
+
+wait_port_empty:
+
+        ldrb    r1, [r3, #UART_OFFSET + 0x14]
+        ands    r1, r1, #0b00100000
+        # beq     wait_port_empty
+
+        strb    r0, [r3, #UART_OFFSET + 0x00]
+
+        b       job_start
+
+job_finish:
 
         pop     {r0-r3,r7,pc}
 
