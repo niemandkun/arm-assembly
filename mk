@@ -38,36 +38,35 @@ if [[ $1 == "-h" ]]; then
 fi
 
 function make_gcc {
+    echo "$GCC $*"
     $GCC $*
 }
 
 function make_asm {
+    echo "$AS $1 -o a.o"
     $AS $1 -o a.o
     if [[ -e a.o ]]; then
+        echo "$LD a.o -o a.out"
         $LD a.o -o a.out
+        echo "rm a.o"
         rm a.o
     fi
 }
 
+FILE_EXT=${1##*.}
+
 if [[ $1 == gcc ]]; then
     shift
     make_gcc $*
-fi
-
-if [[ $1 == as || $1 == asm ]]; then
+elif [[ $1 == as || $1 == asm ]]; then
     make_asm $2
-fi
-
-FILE_EXT=${1##*.}
-
-if [[ $FILE_EXT == c ]]; then
+elif [[ $FILE_EXT == c ]]; then
     make_gcc $1
-fi
-
-if [[ $FILE_EXT == s ]]; then
+elif [[ $FILE_EXT == s ]]; then
     make_asm $1
 fi
 
 if [[ -e a.out ]]; then
+    echo "chmod +x a.out"
     chmod +x a.out
 fi
