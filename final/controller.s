@@ -487,7 +487,7 @@ run_command:
         bl      send_ok
         b       99f
 
-2: @change name:
+2: @ change name:
         ldr     r0, =cmd_name
         bl      strlen
         add     r1, r0
@@ -500,13 +500,13 @@ run_command:
         bl      notify_nick_changed
         b       99f
 
-3: @ok:
+3: @ ok:
         mov     r0, #1
         ldr     r1, =ok_flag
         str     r0, [r1]
         b       99f
 
-4: @sync:
+4: @ sync:
         bl      get_current_time
         ldr     r1, =last_sync_recv
         str     r0, [r1]
