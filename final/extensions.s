@@ -61,16 +61,16 @@ ext_save:
 
 has_ext:
         push    {r1,r2,lr}
-        
+
         ldr     r1, =other_extensions
 
 1: @ begin iterating over other extensions:
         ldrb    r2, [r1], #1
         tst     r2, r2
-        beq     3f
+        beq     2f
 
         cmp     r2, r0
-        beq     2f
+        beq     3f
 
         b       1b
 
@@ -118,14 +118,13 @@ ext_start_send_file:
 
         ldr     r0, =EXT_FILE_TRANSFER
         bl      has_ext
-        mov     r1, r0
+        tst     r0, r0
+
         mov     r0, r2
 
-        tst     r1, r1
         bleq    send_file_ext
-######
-        bl      send_file_compat
-######
+        blne    send_file_compat
+
         bl      do_close_file
 
         ldr     r1, =out_net_buf
