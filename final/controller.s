@@ -127,14 +127,18 @@ return:
         ldr     r1, =self_nick
         bl      add_msg_to_hist
 
+        bl      try_run_user_command
+        tst     r0, r0
+        beq     1f
+
+2: @ send message on line
         bl      send_message
         bl      print_error
 
+1: @ clean message buffer
         ldr     r1, =msg_end
         ldr     r0, =msg_buf
         str     r0, [r1]
-
-        b       finish
 
 finish:
         pop     {r0-r2,pc}
@@ -199,21 +203,57 @@ check_uart_input:
 
 ##############################################################################
 
-# Args: r0 - ptr to message (zero-terminated).
+# returns: r0 = 0 if command was performed successfully.
+
+try_run_user_command:
+        push    {r1,lr}
+
+        ldr     r0, =cmd_name
+        ldr     r1, =msg_buf
+        bl      cmppref
+        tst     r0, r0
+        beq     1f
+
+        mov     r0, #1
+        b       99f
+
+1: @ change name:
+        ldr     r0, =cmd_name
+        bl      strlen
+        ldr     r1, =msg_buf
+        add     r0, r1, r0
+        bl      set_nick
+        eor     r0, r0
+        b       99f
+
+99: @ finish:
+        pop     {r1,pc}
+
+##############################################################################
+
+# args: r0 - ptr to nick (zero terminated).
+set_nick:
+        push    {r0-r1,lr}
+
+        ldr     r1, =self_nick
+        bl      strcpy
+        bl      send_nick
+
+        pop     {r0-r1,pc}
+
+##############################################################################
 
 # Returns: r0 = 0 if send successfull, r0 != 0 otherwise.
 
 send_message:
         push    {r1-r2,lr}
 
-        mov     r2, r0
-
         ldr     r1, =out_net_buf
         ldr     r0, =cmd_msg
         bl      strcpy
         add     r1, r1, r0
 
-        mov     r0, r2
+        ldr     r0, =msg_buf
         bl      strcpy
         add     r1, r1, r0
 
