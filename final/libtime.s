@@ -19,6 +19,14 @@ libtime_init:
 
 ##############################################################################
 
+get_current_time:
+        ldr     r0, =rtc_mem_base
+        ldr     r0, [r0]
+        ldr     r0, [r0, #20]
+        mov     pc, lr
+
+##############################################################################
+
 # Args: r1 - offset in memory.
 # Returns: r0 - length of the written data.
 

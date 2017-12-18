@@ -35,6 +35,10 @@ model_init:
         ldr     r1, =other_nick
         bl      strcpy
 
+        eor     r0, r0
+        ldr     r1, =online_flag
+        str     r0, [r1]
+
         pop     {pc}
 
 ##############################################################################
@@ -50,6 +54,10 @@ default_nick:   .asciz "Аркадий"
 system_nick:    .asciz "System"
 
 error_msg_send: .asciz "Error occured: message was not delivered."
+
+offline_msg:    .asciz "Suddenly, nobody left in the chat."
+
+online_msg:     .asciz "Somebody has appeared in the chat."
 
 template:       .ascii "1 Lorem ipsum dolor sit amet.\r\n"
                 .ascii "2 Lorem ipsum dolor sit amet.\r\n"
@@ -67,6 +75,8 @@ template:       .ascii "1 Lorem ipsum dolor sit amet.\r\n"
 .bss 
 
 ##############################################################################
+
+online_flag:    .space 4
 
 msg_scroll:     .space 4
 msg_end:        .space 4

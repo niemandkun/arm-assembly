@@ -27,6 +27,8 @@ render:
         bl      draw_history
         bl      draw_input
 
+        bl      check_sync_state
+
         ldr     r12, =UPDATE_INTERVAL
 
 check_input:

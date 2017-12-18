@@ -10,6 +10,10 @@ WAIT_OK_CYCLES  = 0x00020000
 
 RETRY_COUNT     = 3
 
+SYNC_INTERVAL   = 1
+
+SYNC_WAIT       = 5
+
 ##############################################################################
 
 controller_init:
@@ -432,6 +436,11 @@ run_command:
         tst     r0, r0
         beq     3f
 
+        ldr     r0, =cmd_sync
+        bl      cmppref
+        tst     r0, r0
+        beq     4f
+
         b       99f
 
 1: @ recive message:
@@ -462,12 +471,63 @@ run_command:
         str     r0, [r1]
         b       99f
 
+4: @sync:
+        bl      get_current_time
+        ldr     r1, =last_sync_recv
+        str     r0, [r1]
+        b       99f
+
 99: @ finish run_command:
         ldr     r0, =in_net_buf
         ldr     r1, =in_net_buf_end
         str     r0, [r1]
 
         pop     {r0-r2,pc}
+
+##############################################################################
+
+check_sync_state:
+        push    {r0-r3,lr}
+
+        bl      get_current_time
+
+        ldr     r1, =last_sync_sent
+        ldr     r2, [r1]
+        sub     r2, r0, r2
+
+        cmp     r2, #SYNC_INTERVAL
+        strge   r0, [r1]
+        blge    send_sync
+
+        ldr     r1, =last_sync_recv
+        ldr     r2, [r1]
+        sub     r2, r0, r2
+
+        ldr     r1, =system_nick
+        ldr     r3, =online_flag
+
+        cmp     r2, #SYNC_WAIT
+        ble     2f
+
+1: @ come offline:
+        ldr     r0, =offline_msg
+        ldr     r2, [r3]
+        tst     r2, r2
+        blne    add_msg_to_hist
+        eor     r0, r0
+        str     r0, [r3]
+        b       3f
+
+2: @ come online:
+        ldr     r0, =online_msg
+        ldr     r2, [r3]
+        tst     r2, r2
+        bleq    add_msg_to_hist
+        mov     r0, #1
+        str     r0, [r3]
+
+3: @ finish
+        pop     {r0-r3,pc}
 
 ##############################################################################
 
@@ -485,6 +545,9 @@ cmd_sync:       .asciz "/sync"
 .bss
 
 ##############################################################################
+
+last_sync_sent: .space 4
+last_sync_recv: .space 4
 
 ok_flag:        .space 4
 
