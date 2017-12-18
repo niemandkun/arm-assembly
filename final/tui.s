@@ -6,7 +6,7 @@
 
 MESSAGE_BOX_HEIGHT = 7
 
-UPDATE_INTERVAL = 0x00010000
+UPDATE_INTERVAL = 0x00020000
 
 ##############################################################################
 
@@ -111,11 +111,11 @@ draw_input:
         eor     r1, r1
         bl      set_cursor_position
 
-#        ldr     r0, =input_buf
-#        ldr     r1, =msg_end
+        ldr     r0, =input_buf
+        ldr     r1, =msg_end
 
-        ldr     r0, =in_net_buf
-        ldr     r1, =in_net_buf_end
+#        ldr     r0, =in_net_buf
+#        ldr     r1, =in_net_buf_end
 
         ldr     r1, [r1]
         mov     r2, #MESSAGE_BOX_HEIGHT

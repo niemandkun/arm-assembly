@@ -53,7 +53,7 @@ model_init:
 
 input:          .ascii "> "
 
-default_nick:   .asciz "Аркадий"
+default_nick:   .asciz "Wanderer"
 
 system_nick:    .asciz "Narrator"
 
