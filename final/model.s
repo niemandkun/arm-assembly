@@ -27,11 +27,11 @@ model_init:
         ldr     r1, =hist_scroll
         str     r0, [r1]
 
-        ldr     r0, =nick
+        ldr     r0, =default_nick
         ldr     r1, =self_nick
         bl      strcpy
 
-        ldr     r0, =nick
+        ldr     r0, =default_nick
         ldr     r1, =other_nick
         bl      strcpy
 
@@ -41,9 +41,15 @@ model_init:
 
 .data
 
+##############################################################################
+
 input:          .ascii "> "
 
-nick:           .asciz "Аркадий"
+default_nick:   .asciz "Аркадий"
+
+system_nick:    .asciz "System"
+
+error_msg_send: .asciz "Error occured: message was not delivered."
 
 template:       .ascii "1 Lorem ipsum dolor sit amet.\r\n"
                 .ascii "2 Lorem ipsum dolor sit amet.\r\n"
@@ -59,6 +65,8 @@ template:       .ascii "1 Lorem ipsum dolor sit amet.\r\n"
 ##############################################################################
 
 .bss 
+
+##############################################################################
 
 msg_scroll:     .space 4
 msg_end:        .space 4

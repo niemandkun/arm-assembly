@@ -6,6 +6,10 @@
 
 SCROLL_SPEED    = 2
 
+WAIT_OK_CYCLES  = 0x00020000
+
+RETRY_COUNT     = 3
+
 ##############################################################################
 
 controller_init:
@@ -117,7 +121,10 @@ return:
 
         ldr     r0, =msg_buf
         ldr     r1, =self_nick
+        bl      add_msg_to_hist
+
         bl      send_message
+        bl      print_error
 
         ldr     r1, =msg_end
         ldr     r0, =msg_buf
@@ -130,12 +137,29 @@ finish:
 
 ##############################################################################
 
+# Args: r0 -- error state (1 error, 0 no errors).
+
+print_error:
+        push    {r0,r1,lr}
+
+        tst     r0, r0
+        beq     1f
+
+        ldr     r0, =error_msg_send
+        ldr     r1, =system_nick
+        bl      add_msg_to_hist
+
+1: @ ok:
+        pop     {r0,r1,pc}
+
+##############################################################################
+
 check_uart_input:
         push    {r0-r2,lr}
 
         bl      uart_poll
         tst     r0, r0
-        beq     1f
+        beq     4f
 
         bl      uart_recv
 
@@ -157,8 +181,8 @@ check_uart_input:
 
 1: @ check end of transmission:
 
-        sub     r1, r2, r1
-        cmp     r1, #2
+        sub     r0, r2, r1
+        cmp     r0, #2
         blt     4f
 
         ldrb    r0, [r2, #-2]
@@ -171,13 +195,12 @@ check_uart_input:
 
 ##############################################################################
 
-# Args: r0 - ptr to message (zero-terminated)
+# Args: r0 - ptr to message (zero-terminated).
+
+# Returns: r0 = 0 if send successfull, r0 != 0 otherwise.
 
 send_message:
-        push    {r0-r2,lr}
-
-        ldr     r1, =self_nick
-        bl      add_msg_to_hist
+        push    {r1-r2,lr}
 
         mov     r2, r0
 
@@ -194,10 +217,20 @@ send_message:
         str     r0, [r1], #1
 
         bl      write_checksum
-
+        
+        ldr     r2, =RETRY_COUNT
+1:
         bl      send_buffer
+        bl      wait_ok
+        tst     r0, r0
+        beq     2f
 
-        pop     {r0-r2,pc}
+        subs    r2, #1
+        beq     2f
+
+        b       1b
+2:
+        pop     {r1-r2,pc}
 
 ##############################################################################
 
@@ -271,13 +304,48 @@ send_buffer:
         cmp     r2, r1
         beq     2f
 
-        ldrb    r0, [r2]
+        ldrb    r0, [r2], #1
         bl      uart_send
 
-        add     r2, #1
         b       1b
 2:
         pop     {r0-r2,pc}
+
+##############################################################################
+
+# Wait /ok message from uart port.
+# Args: none. Returns: r0 if OK, 1 otherwise.
+
+wait_ok:
+        push    {r1-r2,lr}
+
+        eor     r0, r0
+        ldr     r1, =ok_flag
+        str     r0, [r1]        @ reset ok_flag
+
+        ldr     r2, =WAIT_OK_CYCLES
+
+1: @ run cycle to wait /ok message.
+        bl      check_uart_input
+        ldr     r0, [r1]
+        tst     r0, r0
+        bne     2f
+
+        subs    r2, #1
+        beq     3f
+
+        b       1b
+
+2: @ OK:
+        eor     r0, r0
+        b       4f
+
+3: @ not so OK:
+        mov     r0, #1
+        b       4f
+
+4: @ finish:
+        pop     {r1-r2,pc}
 
 ##############################################################################
 
@@ -359,6 +427,11 @@ run_command:
         tst     r0, r0
         beq     2f
 
+        ldr     r0, =cmd_ok
+        bl      cmppref
+        tst     r0, r0
+        beq     3f
+
         b       99f
 
 1: @ recive message:
@@ -381,6 +454,12 @@ run_command:
         ldr     r1, =other_nick
         bl      strcpy
         bl      send_ok
+        b       99f
+
+3: @ok:
+        mov     r0, #1
+        ldr     r1, =ok_flag
+        str     r0, [r1]
         b       99f
 
 99: @ finish run_command:
@@ -406,6 +485,8 @@ cmd_sync:       .asciz "/sync"
 .bss
 
 ##############################################################################
+
+ok_flag:        .space 4
 
 in_net_buf_end: .space 4
 
