@@ -31,7 +31,8 @@
 main:
         push    {lr}
 
-        push    {r0,r1}
+        mov     r11, r0
+        mov     r12, r1
 
         bl      libmem_init
         tst     r0, r0
@@ -41,7 +42,8 @@ main:
         tst     r0, r0
         bne     exit
 
-        pop     {r0,r1}
+        mov     r0, r11
+        mov     r1, r12
 
         bl      libuart_init
         tst     r0, r0
@@ -49,6 +51,7 @@ main:
 
         bl      canon
         bl      model_init
+        bl      controller_init
 
         bl      main_loop
 

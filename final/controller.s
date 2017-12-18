@@ -8,6 +8,17 @@ SCROLL_SPEED    = 2
 
 ##############################################################################
 
+controller_init:
+        push    {r0,r1,lr}
+
+        ldr     r0, =in_net_buf
+        ldr     r1, =in_net_buf_end
+        str     r0, [r1]
+
+        pop     {r0,r1,pc}
+
+##############################################################################
+
 # Args: r0 - length of input
 #       r1 - ptr to input array
 
@@ -128,12 +139,34 @@ check_uart_input:
 
         bl      uart_recv
 
-        ldr     r1, =msg_end
-        ldr     r2, [r1]
-        strb    r0, [r2], #1
-        str     r2, [r1]
+        ldr     r1, =in_net_buf
+        ldr     r2, =in_net_buf_end
+        ldr     r2, [r2]
 
-1: @ finish:
+        cmp     r2, r1
+        bne     3f
+
+2: @ recieve start of message: ('/' character):
+        cmp     r0, #0x2F
+        bne     1f
+
+3: @store byte in buffer
+        strb    r0, [r2], #1
+        ldr     r0, =in_net_buf_end
+        str     r2, [r0]
+
+1: @ check end of transmission:
+
+        sub     r1, r2, r1
+        cmp     r1, #2
+        blt     4f
+
+        ldrb    r0, [r2, #-2]
+        cmp     r0, #0x0A
+
+        bleq    run_command
+
+4: @ finish:
         pop     {r0-r2,pc}
 
 ##############################################################################
@@ -268,6 +301,42 @@ add_msg_to_hist:
 
 ##############################################################################
 
+run_command:
+        push    {r0-r2,lr}
+
+        ldr     r0, =in_net_buf_end
+        ldr     r0, [r0]
+        eor     r2, r2
+        strb    r2, [r0, #-2]   @ replace "\n" with 0x00
+
+        ldr     r1, =in_net_buf
+
+        ldr     r0, =cmd_msg
+        bl      cmppref
+        tst     r0, r0
+        beq     1f
+
+        b       99f
+
+1: @ recive message:
+        ldr     r0, =cmd_msg
+        bl      strlen
+        add     r1, r0
+
+        mov     r0, r1
+        ldr     r1, =other_nick
+        bl      add_msg_to_hist
+        b       99f
+
+99: @ finish run_command:
+        ldr     r0, =in_net_buf
+        ldr     r1, =in_net_buf_end
+        str     r0, [r1]
+
+        pop     {r0-r2,pc}
+
+##############################################################################
+
 .data
 
 ##############################################################################
@@ -282,6 +351,8 @@ cmd_sync:       .asciz "/sync"
 .bss
 
 ##############################################################################
+
+in_net_buf_end: .space 4
 
 out_net_buf:    .space 1000
 in_net_buf:     .space 1000

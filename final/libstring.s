@@ -290,6 +290,37 @@ linecount:
 
 ##############################################################################
 
+# Args: r0 - first string (zero terminated)
+#       r1 - second string
+
+# Returns 0 if first string is prefix of second, 1 otherwise.
+
+cmppref:
+        push    {r1-r3,lr}
+
+1: @ loop over first string:
+        ldrb    r2, [r0], #1
+        tst     r2, r2
+        beq     2f
+
+        ldrb    r3, [r1], #1
+        cmp     r2, r3
+        bne     3f
+
+        b       1b
+
+2: @ is prefix:
+        eor     r0, r0
+        b       4f
+
+3: @ is not prefix:
+        mov     r0, #1
+
+4: @ finish:
+        pop     {r1-r3,pc}
+
+##############################################################################
+
 # EoF
 
 

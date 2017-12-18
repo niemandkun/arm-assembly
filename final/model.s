@@ -15,7 +15,7 @@ model_init:
         ldr     r0, =msg_buf
         ldr     r1, =msg_end
         str     r0, [r1]
-        
+
         ldr     r0, =hist_buf
         ldr     r1, =hist_end
         str     r0, [r1]
@@ -29,6 +29,10 @@ model_init:
 
         ldr     r0, =nick
         ldr     r1, =self_nick
+        bl      strcpy
+
+        ldr     r0, =nick
+        ldr     r1, =other_nick
         bl      strcpy
 
         pop     {pc}
