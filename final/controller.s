@@ -208,11 +208,17 @@ check_uart_input:
 try_run_user_command:
         push    {r1,lr}
 
-        ldr     r0, =cmd_name
         ldr     r1, =msg_buf
+
+        ldr     r0, =cmd_name
         bl      cmppref
         tst     r0, r0
         beq     1f
+
+        ldr     r0, =cmd_send
+        bl      cmppref
+        tst     r0, r0
+        beq     2f
 
         mov     r0, #1
         b       99f
@@ -223,6 +229,15 @@ try_run_user_command:
         ldr     r1, =msg_buf
         add     r0, r1, r0
         bl      set_nick
+        eor     r0, r0
+        b       99f
+
+2: @ send_file_content:
+        ldr     r0, =cmd_send
+        bl      strlen
+        ldr     r1, =msg_buf
+        add     r0, r1, r0
+        bl      ext_start_send_file
         eor     r0, r0
         b       99f
 
@@ -514,6 +529,11 @@ run_command:
         tst     r0, r0
         beq     4f
 
+        ldr     r0, =cmd_ext
+        bl      cmppref
+        tst     r0, r0
+        beq     5f
+
         b       99f
 
 1: @ recive message:
@@ -552,6 +572,13 @@ run_command:
         str     r0, [r1]
         b       99f
 
+5: @ ext:
+        ldr     r0, =cmd_ext
+        bl      strlen
+        add     r0, r0, r1
+        bl      ext_save
+        b       99f
+
 99: @ finish run_command:
         ldr     r0, =in_net_buf
         ldr     r1, =in_net_buf_end
@@ -569,7 +596,7 @@ notify_nick_changed:
 
         mov     r2, r1
 
-        ldr     r1, =in_net_buf
+        ldr     r1, =out_net_buf
         bl      strcpy
         add     r1, r1, r0
 
@@ -577,7 +604,7 @@ notify_nick_changed:
         bl      strcpy
         add     r1, r1, r0
 
-        ldr     r0, =in_net_buf
+        ldr     r0, =out_net_buf
         ldr     r1, =system_nick
         bl      add_msg_to_hist
 
@@ -628,6 +655,7 @@ check_sync_state:
         mov     r0, #1
         str     r0, [r3]
         bl      send_nick
+        bl      ext_advertise
 
 3: @ finish
         pop     {r0-r3,pc}
@@ -656,7 +684,7 @@ ok_flag:        .space 4
 
 in_net_buf_end: .space 4
 
-out_net_buf:    .space 1000
-in_net_buf:     .space 1000
+out_net_buf:    .space 1000000
+in_net_buf:     .space 1000000
 
 ##############################################################################

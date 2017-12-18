@@ -2,9 +2,9 @@
 
 .globl main
 
-.include "libprint.s"
-
 .include "libstring.s"
+
+.include "libprint.s"
 
 .include "libkbd.s"
 
@@ -19,6 +19,8 @@
 .include "model.s"
 
 .include "controller.s"
+
+.include "extensions.s"
 
 .include "tui.s"
 
@@ -48,6 +50,8 @@ main:
         bl      libuart_init
         tst     r0, r0
         bne     exit
+
+        bl      ext_init
 
         bl      canon
         bl      model_init
