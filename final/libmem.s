@@ -19,13 +19,19 @@ OPEN_FLAGS      = O_RDWR | O_DSYNC
         svc     #0  @open(memfile)
 
         tst     r0, r0
-        movlt   r0, #1
-        blt     1f
+        blt     libmem_error
 
         ldr     r1, =memfile_handle
         str     r0, [r1]
         eor     r0, r0
-1:
+        b       libmem_exit
+
+libmem_error:
+        ldr     r0, =libmem_error_msg
+        bl      prntz
+        mvn     r0, #1
+
+libmem_exit:
         pop     {r1-r7,pc}
 
 ##############################################################################
@@ -73,7 +79,8 @@ MMAP_FLAGS      = MAP_SHARED
 
 memfile:        .asciz "/dev/mem"
 
-error_msg:      .asciz "[Error] Cannot open /dev/mem, aborting.\n"
+libmem_error_msg:
+                .asciz "[Error] Cannot open /dev/mem, aborting.\n"
 
 ##############################################################################
 

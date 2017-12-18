@@ -14,6 +14,8 @@
 
 .include "libtime.s"
 
+.include "libuart.s"
+
 .include "model.s"
 
 .include "controller.s"
@@ -29,11 +31,21 @@
 main:
         push    {lr}
 
+        push    {r0,r1}
+
         bl      libmem_init
         tst     r0, r0
-        bne     libmem_error
+        bne     exit
 
         bl      libtime_init
+        tst     r0, r0
+        bne     exit
+
+        pop     {r0,r1}
+
+        bl      libuart_init
+        tst     r0, r0
+        bne     exit
 
         bl      canon
         bl      model_init
@@ -44,10 +56,6 @@ main:
         bl      nocanon
 
         b       exit
-
-libmem_error:
-        ldr     r0, =error_msg
-        bl      prntz
 
 exit:
         pop     {pc}

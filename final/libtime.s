@@ -9,12 +9,13 @@ RTC_BASE_ADDRESS = 0x1f00
 ##############################################################################
 
 libtime_init:
-        push    {r0,r1,lr}
+        push    {r1,lr}
         ldr     r0, =RTC_BASE_ADDRESS
         bl      do_mmap_mem
         ldr     r1, =rtc_mem_base
         str     r0, [r1]
-        pop     {r0,r1,pc}
+        eor     r0, r0
+        pop     {r1,pc}
 
 ##############################################################################
 

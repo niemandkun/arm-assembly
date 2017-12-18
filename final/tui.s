@@ -59,6 +59,8 @@ main_loop_finish:
 cleanup:
         push    {lr}
 
+        bl      reset_terminal
+
         eor     r0, r0
         eor     r1, r1
         bl      set_cursor_position
