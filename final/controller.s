@@ -4,6 +4,10 @@
 
 ##############################################################################
 
+SCROLL_SPEED    = 2
+
+##############################################################################
+
 # Args: r0 - length of input
 #       r1 - ptr to input array
 
@@ -23,7 +27,7 @@ single_character:
         beq     return
 
         cmp     r0, #0x0A
-        beq     ctrl_enter
+        beq     return
 
         cmp     r0, #0x20
         blt     finish
@@ -77,7 +81,7 @@ backspace:
 arrow_up:
         ldr     r1, =hist_scroll
         ldr     r0, [r1]
-        add     r0, #1
+        add     r0, #SCROLL_SPEED
         str     r0, [r1]
         b       finish
 
@@ -86,21 +90,11 @@ arrow_down:
         ldr     r0, [r1]
         cmp     r0, #0
         beq     finish
-        sub     r0, #1
+        sub     r0, #SCROLL_SPEED
         str     r0, [r1]
         b       finish
 
 return:
-        ldr     r1, =msg_end
-        ldr     r2, [r1]
-        mov     r0, #0x0D
-        strb    r0, [r2], #1
-        mov     r0, #0x0A
-        strb    r0, [r2], #1
-        str     r2, [r1]
-        b       finish
-
-ctrl_enter:
         ldr     r1, =msg_end
         ldr     r1, [r1]
         ldr     r2, =msg_buf
@@ -112,7 +106,7 @@ ctrl_enter:
 
         ldr     r0, =msg_buf
         ldr     r1, =self_nick
-        bl      recv_message
+        bl      send_message
 
         ldr     r1, =msg_end
         ldr     r0, =msg_buf
@@ -144,19 +138,82 @@ check_uart_input:
 
 ##############################################################################
 
-# Args: r0 - ptr to message
+# Args: r0 - ptr to message (zero-terminated)
 
 send_message:
-        push    {lr}
+        push    {r0-r2,lr}
 
-        pop     {pc}
+        ldr     r1, =self_nick
+        bl      add_msg_to_hist
+
+        mov     r2, r0
+
+        ldr     r1, =out_net_buf
+        ldr     r0, =cmd_msg
+        bl      strcpy
+        add     r1, r0
+
+        mov     r0, r2
+        bl      strcpy
+        add     r1, r0
+
+        mov     r0, #0x0A
+        str     r0, [r1], #1
+
+        bl      write_checksum
+
+        bl      send_buffer
+
+        pop     {r0-r2,pc}
+
+##############################################################################
+
+# Args: r1 - buffer end (exclusive)
+# Returns: r1 - buffer end after writing checksum (exclusive)
+
+write_checksum:
+        push    {r0,r2,r3,lr}
+
+        ldr     r0, =out_net_buf    @ ptr
+        eor     r2, r2              @ checksum
+1:
+        ldrb    r3, [r0], #1
+        add     r2, r3
+        cmp     r0, r1
+        bne     1b
+
+        strb    r2, [r1], #1
+
+        pop     {r0,r2,r3,pc}
+
+##############################################################################
+
+# Send content of uart_buffer over uart.
+
+# Args: r1 - buffer end (exclusive).
+
+send_buffer:
+        push    {r0-r2,lr}
+
+        ldr     r2, =out_net_buf
+1:
+        cmp     r2, r1
+        beq     2f
+
+        ldrb    r0, [r2]
+        bl      uart_send
+
+        add     r2, #1
+        b       1b
+2:
+        pop     {r0-r2,pc}
 
 ##############################################################################
 
 # Args: r0 - ptr to message (zero-terminated)
 #       r1 - ptr to nick (zero-terminated)
 
-recv_message:
+add_msg_to_hist:
         push    {r0-r4,lr}
 
         mov     r2, r0  @ message
@@ -212,5 +269,21 @@ recv_message:
 ##############################################################################
 
 .data
+
+##############################################################################
+
+cmd_msg:        .asciz "/msg "
+cmd_name:       .asciz "/name "
+cmd_ok:         .asciz "/ok"
+cmd_sync:       .asciz "/sync"
+
+##############################################################################
+
+.bss
+
+##############################################################################
+
+out_net_buf:    .space 1000
+in_net_buf:     .space 1000
 
 ##############################################################################
