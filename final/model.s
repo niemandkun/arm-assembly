@@ -39,6 +39,10 @@ model_init:
         ldr     r1, =online_flag
         str     r0, [r1]
 
+        ldr     r0, =welcome_msg
+        ldr     r1, =system_nick
+        bl      add_msg_to_hist
+
         pop     {pc}
 
 ##############################################################################
@@ -51,13 +55,23 @@ input:          .ascii "> "
 
 default_nick:   .asciz "Аркадий"
 
-system_nick:    .asciz "System"
+system_nick:    .asciz "Narrator"
 
 error_msg_send: .asciz "Error occured: message was not delivered."
 
-offline_msg:    .asciz "Suddenly, nobody left in the chat."
+welcome_msg:    .ascii "Welcome to the Rites, Wanderer. "
+                .ascii "What is thy name today?\r\n\r\n"
+                .asciz "(Use command `/name [NAME]` to set the name)."
 
-online_msg:     .asciz "Somebody has appeared in the chat."
+offline_msg:    .ascii "The Rites have ended and no one left by the fire.\r\n"
+                .asciz "Until the next Rites, Wanderer."
+
+online_msg:     .ascii "Suddenly, somebody has appeared "
+                .asciz "in the front of the fire."
+
+nick_msg:       .asciz "The stars aligned for thou to meet "
+
+nick_chg_msg:   .asciz "And shall thou find the the glory at the Rites, "
 
 template:       .ascii "1 Lorem ipsum dolor sit amet.\r\n"
                 .ascii "2 Lorem ipsum dolor sit amet.\r\n"

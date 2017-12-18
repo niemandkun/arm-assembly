@@ -238,6 +238,39 @@ send_message:
 
 ##############################################################################
 
+send_nick:
+        push    {r0-r2,lr}
+
+        ldr     r1, =out_net_buf
+        ldr     r0, =cmd_name
+        bl      strcpy
+        add     r1, r1, r0
+
+        ldr     r0, =self_nick
+        bl      strcpy
+        add     r1, r1, r0
+
+        mov     r0, #0x0A
+        str     r0, [r1], #1
+
+        bl      write_checksum
+
+        ldr     r2, =RETRY_COUNT
+1:
+        bl      send_buffer
+        bl      wait_ok
+        tst     r0, r0
+        beq     2f
+
+        subs    r2, #1
+        beq     2f
+
+        b       1b
+2:
+        pop     {r0-r2,pc}
+
+##############################################################################
+
 send_ok:
         push    {r0,r1,lr}
 
@@ -463,6 +496,8 @@ run_command:
         ldr     r1, =other_nick
         bl      strcpy
         bl      send_ok
+        ldr     r0, =nick_msg
+        bl      notify_nick_changed
         b       99f
 
 3: @ok:
@@ -481,6 +516,30 @@ run_command:
         ldr     r0, =in_net_buf
         ldr     r1, =in_net_buf_end
         str     r0, [r1]
+
+        pop     {r0-r2,pc}
+
+##############################################################################
+
+# r0 - message (zero terminated)
+# r1 - nick
+
+notify_nick_changed:
+        push    {r0-r2,lr}
+
+        mov     r2, r1
+
+        ldr     r1, =in_net_buf
+        bl      strcpy
+        add     r1, r1, r0
+
+        mov     r0, r2
+        bl      strcpy
+        add     r1, r1, r0
+
+        ldr     r0, =in_net_buf
+        ldr     r1, =system_nick
+        bl      add_msg_to_hist
 
         pop     {r0-r2,pc}
 
@@ -522,9 +581,13 @@ check_sync_state:
         ldr     r0, =online_msg
         ldr     r2, [r3]
         tst     r2, r2
-        bleq    add_msg_to_hist
+        bne     3f
+
+4: @ should send sync information:
+        bl      add_msg_to_hist
         mov     r0, #1
         str     r0, [r3]
+        bl      send_nick
 
 3: @ finish
         pop     {r0-r3,pc}
