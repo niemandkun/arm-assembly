@@ -184,11 +184,11 @@ send_message:
         ldr     r1, =out_net_buf
         ldr     r0, =cmd_msg
         bl      strcpy
-        add     r1, r0
+        add     r1, r1, r0
 
         mov     r0, r2
         bl      strcpy
-        add     r1, r0
+        add     r1, r1, r0
 
         mov     r0, #0x0A
         str     r0, [r1], #1
@@ -198,6 +198,44 @@ send_message:
         bl      send_buffer
 
         pop     {r0-r2,pc}
+
+##############################################################################
+
+send_ok:
+        push    {r0,r1,lr}
+
+        ldr     r0, =cmd_ok
+        ldr     r1, =out_net_buf
+        bl      strcpy
+        add     r1, r1, r0
+
+        mov     r0, #0x0A
+        str     r0, [r1], #1
+
+        bl      write_checksum
+
+        bl      send_buffer
+
+        pop     {r0,r1,pc}
+
+##############################################################################
+
+send_sync:
+        push    {r0,r1,lr}
+
+        ldr     r0, =cmd_sync
+        ldr     r1, =out_net_buf
+        bl      strcpy
+        add     r1, r1, r0
+
+        mov     r0, #0x0A
+        str     r0, [r1], #1
+
+        bl      write_checksum
+
+        bl      send_buffer
+
+        pop     {r0,r1,pc}
 
 ##############################################################################
 
@@ -316,6 +354,11 @@ run_command:
         tst     r0, r0
         beq     1f
 
+        ldr     r0, =cmd_name
+        bl      cmppref
+        tst     r0, r0
+        beq     2f
+
         b       99f
 
 1: @ recive message:
@@ -326,6 +369,18 @@ run_command:
         mov     r0, r1
         ldr     r1, =other_nick
         bl      add_msg_to_hist
+        bl      send_ok
+        b       99f
+
+2: @change name:
+        ldr     r0, =cmd_name
+        bl      strlen
+        add     r1, r0
+
+        mov     r0, r1
+        ldr     r1, =other_nick
+        bl      strcpy
+        bl      send_ok
         b       99f
 
 99: @ finish run_command:
