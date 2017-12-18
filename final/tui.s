@@ -6,7 +6,7 @@
 
 MESSAGE_BOX_HEIGHT = 7
 
-UPDATE_INTERVAL = 0x0000B000
+UPDATE_INTERVAL = 0x00010000
 
 ##############################################################################
 
@@ -30,6 +30,8 @@ render:
         ldr     r12, =UPDATE_INTERVAL
 
 check_input:
+        bl      check_uart_input
+
         bl      kbdhit
         tst     r0, r0
         beq     main_loop_start

@@ -8,6 +8,14 @@ UART_MEM        = 0x01C28
 
 CCU_MEM         = 0x01C20
 
+UART1_BIT       = 17
+
+UART1_OFFSET    = 0x0400
+
+UART2_BIT       = 18
+
+UART2_OFFSET    = 0x0800
+
 ##############################################################################
 
 libuart_init:
@@ -71,12 +79,6 @@ do_parse_args:
 do_setup_uart:
         push    {r0-r4,lr}
 
-UART1_BIT        = 17
-UART1_OFFSET     = 0x0400
-
-UART2_BIT        = 18
-UART2_OFFSET     = 0x0800
-
         ldr     r1, =uart_no
         ldr     r1, [r1]
         cmp     r1, #1
@@ -124,6 +126,59 @@ DLAB_UNSET      = 0b01111111
         strb    r2, [r1, #0x0C]
 
         pop     {r0-r4,pc}
+
+##############################################################################
+
+# Returns 1 if uart is ready to recv, 0 otherwise.
+
+uart_poll:
+        push    {lr}
+        bl      get_uart_offset
+        ldrb    r0, [r0, #0x14]
+        and     r0, r0, #1
+        pop     {pc}
+
+##############################################################################
+
+# Returs recieved byte in r0.
+
+uart_recv:
+        push    {lr}
+        bl      get_uart_offset
+        ldrb    r0, [r0, #0x00]
+        pop     {pc}
+
+##############################################################################
+
+# Send byte from r0.
+
+uart_send:
+        push    {r1,r2,lr}
+        mov     r1, r0
+        bl      get_uart_offset
+
+1: @ wait clear to send:
+        ldrb    r2, [r0, #0x14]
+        ands    r2, r2, #0b00100000
+        beq     1b
+
+        strb    r1, [r0, #0x00]
+
+        pop     {r1,r2,pc}
+
+##############################################################################
+
+get_uart_offset:
+        push    {r1,lr}
+        ldr     r0, =uart_no
+        ldr     r0, [r0]
+        cmp     r0, #1
+        ldreq   r0, =UART1_OFFSET
+        ldrne   r0, =UART2_OFFSET
+        ldr     r1, =uart_mem
+        ldr     r1, [r1]
+        add     r0, r0, r1
+        pop     {r1,pc}
 
 ##############################################################################
 
