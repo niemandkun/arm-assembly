@@ -105,9 +105,16 @@ do_setup_uart:
         ldr     r1, [r1]
         add     r1, r1, r4
 
-DLAB_SET        = 0b10000011
+DLAB_SET        = 0b10000000
+PARITY_EVEN     = 0b00010000
+PARITY_ENABLED  = 0b00001000
+DATA_8_BIT      = 0b00000011
 
-        ldr     r0, =DLAB_SET
+        eor     r0, r0
+        orr     r0, r0, #DLAB_SET
+        orr     r0, r0, #DATA_8_BIT
+        orr     r0, r0, #PARITY_ENABLED
+        orr     r0, r0, #PARITY_EVEN
         ldrb    r2, [r1, #0x0C]
         orr     r2, r2, r0
         strb    r2, [r1, #0x0C]
@@ -117,6 +124,12 @@ DLAB_SET        = 0b10000011
 
         eor     r0, r0, r0
         strb    r0, [r1, #0x04]
+
+FIFO_ENABLED    = 0b00000001
+
+        ldr     r0, [r1, #0x08]
+        orr     r0, r0, #FIFO_ENABLED
+        str     r0, [r1, #0x08]
 
 DLAB_UNSET      = 0b01111111
 
